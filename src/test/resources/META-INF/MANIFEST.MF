@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 1
+Bundle-SymbolicName: org.nuxeo.ecm.core.event.kafka.test
+Import-Package: org.nuxeo.ecm.core.event,
+ org.nuxeo.runtime
