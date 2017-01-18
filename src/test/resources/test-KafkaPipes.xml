@@ -10,11 +10,7 @@
 
   <extension target="org.nuxeo.ecm.core.event.EventServiceComponent" point="pipe">
     <eventPipe name="kafkaPipe" class="org.nuxeo.ecm.core.event.kafka.KafkaPipe" priority="0">
-     <parameters>
-       <parameter name="KafkaBrokerHost">127.0.0.1</parameter>
-       <parameter name="KafkaBrokerPort">9093</parameter>
-       <parameter name="KafkaTopic">KafkaTopic</parameter>
-     </parameters>
+
     </eventPipe>
   </extension>
   

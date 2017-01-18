@@ -46,8 +46,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -70,7 +70,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
     protected boolean stop = false;
 
-    protected ThreadPoolExecutor consumerTPE;
+    protected ExecutorService consumerTPE;
 
     protected EventBundleJSONIO io = new EventBundleJSONIO();
 
@@ -88,6 +88,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         consumer.subscribe(topics);
         try {
             propagateTopics(5000, service.getHost());
+            log.debug("All topics were successfully propagated");
         } catch (IOException e) {
             log.error(e);
         }
@@ -98,11 +99,10 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
         AsyncEventExecutor asyncExec = new AsyncEventExecutor();
 
-        consumerTPE = new ThreadPoolExecutor(1, 1, 60, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
-        consumerTPE.prestartCoreThread();
+        consumerTPE = Executors.newSingleThreadExecutor();
         consumerTPE.execute(new Runnable() {
 
-            protected void process(ConsumerRecord<String, String> record) {
+            private void process(ConsumerRecord<String, String> record) {
                 String message = record.value();
 
                 EventBundle bundle = io.unmarshal(message);
@@ -116,7 +116,6 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
             @Override
             public void run() {
-
                 while (!stop) {
                     ConsumerRecords<String, String> records = consumer.poll(2000);
                     for (ConsumerRecord<String, String> record : records) {
@@ -134,6 +133,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
     public void shutdown() throws InterruptedException {
         stop = true;
         waitForCompletion(5000L);
+        consumerTPE.awaitTermination(5000L, TimeUnit.MILLISECONDS);
         consumerTPE.shutdown();
         producer.close();
     }
