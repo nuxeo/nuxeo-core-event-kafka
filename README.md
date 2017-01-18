@@ -4,6 +4,12 @@
 
 The project tends to be an example of plugable event system within Nuxeo platform.
 
+## Building
+### How to Build Nuxeo Platform Importer
+Build the Nuxeo Platform Importer with Maven:
+
+```$ mvn install -DskipTests```
+
 ## Resources
 ### Documentation
 Please follow the official [documentation](https://doc.nuxeo.com/nxdoc/events-and-listeners/) for Nuxeo Events & Listener
