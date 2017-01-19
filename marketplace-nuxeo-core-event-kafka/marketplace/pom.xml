@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <artifactId>marketplace-nuxeo-core-event-kafka</artifactId>
+    <groupId>org.nuxeo.ecm.core.event.kafka</groupId>
+    <version>8.10-HF01-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>marketplace</artifactId>
+  <packaging>zip</packaging>
+  <name>Nuxeo Core Event Kafka Marketplace package</name>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.nuxeo.ecm.distribution</groupId>
+      <artifactId>nuxeo-nxr-server</artifactId>
+      <version>${nuxeo.distribution.version}</version>
+      <type>zip</type>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.nuxeo.ecm.distribution</groupId>
+      <artifactId>nuxeo-nxr-server</artifactId>
+      <version>${nuxeo.distribution.version}</version>
+      <type>pom</type>
+    </dependency>
+    <dependency>
+      <groupId>org.nuxeo.ecm.core.event.kafka</groupId>
+      <artifactId>nuxeo-core-event-kafka</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.nuxeo.build</groupId>
+        <artifactId>ant-assembly-maven-plugin</artifactId>
+        <configuration>
+          <buildFile>${basedir}/src/main/assemble/assembly.xml</buildFile>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

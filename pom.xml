@@ -11,7 +11,7 @@
   </parent>
   <groupId>org.nuxeo.ecm.core.event.kafka</groupId>
   <artifactId>nuxeo-core-event-kafka-parent</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>8.10-HF01-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Nuxeo Core Event Parent</name>
 
@@ -19,12 +19,32 @@
     <module>nuxeo-core-event-kafka</module>
   </modules>
 
+  <profiles>
+    <profile>
+      <id>marketplace</id>
+      <modules>
+        <module>marketplace-nuxeo-core-event-kafka</module>
+      </modules>
+    </profile>
+    <profile>
+      <id>release</id>
+      <modules>
+        <module>marketplace-nuxeo-core-event-kafka</module>
+      </modules>
+    </profile>
+  </profiles>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
         <groupId>org.nuxeo.ecm.core.event.kafka</groupId>
         <artifactId>nuxeo-core-event-kafka</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.nuxeo.ecm.distribution</groupId>
+        <artifactId>nuxeo-nxr-server</artifactId>
+        <version>${nuxeo.distribution.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
