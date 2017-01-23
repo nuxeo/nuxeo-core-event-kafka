@@ -13,7 +13,8 @@ Build the Nuxeo Platform Importer with Maven:
 ## Resources
 ### Documentation
 Please follow the official [documentation](https://doc.nuxeo.com/nxdoc/events-and-listeners/) for Nuxeo Events & Listener
-
+Current marketplace version contains the template with configurations for Kafka 0.10.1.0. You have to edit the template accordingly to the configuration of your Kafka cluster.
+Please follow documentation on the official [Apache Kafka page](https://kafka.apache.org/documentation/#configuration).
 
 ### Reporting Issues
 You can follow the developments in the Nuxeo Core Event Kafka project of our JIRA bug tracker, which includes a Nuxeo Core Event Kafka component:
