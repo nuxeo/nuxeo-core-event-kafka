@@ -139,7 +139,6 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
     @Override
     public boolean waitForCompletion(long timeoutMillis) throws InterruptedException {
-        producer.flush();
         Thread.sleep(2000); // XXX
         return true;
     }
@@ -154,6 +153,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         int rand = new Random().nextInt(topics.size());
         ProducerRecord<String, String> data = new ProducerRecord<>(topics.get(rand), null, message);
         producer.send(data);
+        producer.flush();
     }
 
     private List<String> propagateTopics(int timeout, String host) throws IOException {
