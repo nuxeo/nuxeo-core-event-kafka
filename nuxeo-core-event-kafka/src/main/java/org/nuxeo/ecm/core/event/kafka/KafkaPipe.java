@@ -87,7 +87,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         consumer = new KafkaConsumer<>(service.getConsumerProperties());
         consumer.subscribe(topics);
         try {
-            propagateTopics(5000, service.getHost());
+            propagateTopics(10000, service.getHost());
         } catch (IOException e) {
             log.error(e);
         }
