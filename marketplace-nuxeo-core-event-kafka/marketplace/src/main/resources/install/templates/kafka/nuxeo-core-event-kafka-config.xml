@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <component name="org.nuxeo.ecm.core.event.kafka.test.kafkaservice">
   <extension target="org.nuxeo.ecm.core.event.kafka.service.DefaultKafkaComponent" point="kafkaConfiguration">
-    <kafkaConfig bootstrapServer="127.0.0.1:9092">
+    <kafkaConfig bootstrapServer="${nuxeo.kafka.core.event.servers}">
       <topics>
         <topic>KafkaTopic</topic>
       </topics>
@@ -13,7 +13,7 @@
         <property name="max.block.ms">1000</property>
         <property name="compression.type">none</property>
         <property name="key.serializer">org.apache.kafka.common.serialization.StringSerializer</property>
-        <property name="value.serializer">org.apache.kafka.common.serialization.StringSerializer</property>
+        <property name="value.serializer">${nuxeo.kafka.core.event.serializer}</property>
       </producerConfigs>
 
       <consumerConfigs>
@@ -27,7 +27,7 @@
         <property name="max.partition.fetch.bytes">30720</property>
         <property name="max.poll.records">100</property>
         <property name="key.deserializer">org.apache.kafka.common.serialization.StringDeserializer</property>
-        <property name="value.deserializer">org.apache.kafka.common.serialization.StringDeserializer</property>
+        <property name="value.deserializer">${nuxeo.kafka.core.event.deserializer}</property>
       </consumerConfigs>
     </kafkaConfig>
   </extension>
