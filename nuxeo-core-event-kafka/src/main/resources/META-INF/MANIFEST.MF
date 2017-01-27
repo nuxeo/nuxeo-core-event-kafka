@@ -4,4 +4,5 @@ Bundle-ManifestVersion: 1
 Bundle-Name: Nuxeo Kafka Event
 Bundle-Version: 1.0.0
 Bundle-SymbolicName: org.nuxeo.ecm.core.event.kafka;singleton:=true
-Nuxeo-Component: OSGI-INF/kafka-configs-service.xml
+Nuxeo-Component: OSGI-INF/kafka-configs-service.xml,
+ OSGI-INF/nuxeo-core-event-kafka-contrib.xml

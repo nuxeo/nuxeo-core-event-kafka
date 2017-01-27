@@ -46,7 +46,7 @@
           <artifact groupId="org.nuxeo*"/>
           <artifact groupId="nuxeo-studio*"/>
           <!-- Include your artifacts using their groupId for instance -->
-          <artifact groupId="com.nuxeo.ccplugin*"/>
+          <artifact groupId="org.nuxeo.ecm.core.event.kafka*"/>
         </includes>
         <excludes>
           <artifact groupId="${maven.project.groupId}" artifactId="${maven.project.artifactId}" version="${maven.project.version}" type="${maven.project.packaging}"/>
@@ -62,6 +62,7 @@
       <artifact:set>
         <includes>
           <artifact groupId="org.nuxeo.lib*"/>
+          <artifact groupId="!org.nuxeo*"/>
         </includes>
         <excludes>
           <artifact scope="test"/>
@@ -69,7 +70,7 @@
           <artifact type="pom"/>
           <artifact groupId="nuxeo-studio"/>
           <!-- Filter out your artifacts using their groupId for instance -->
-          <artifact groupId="com.nuxeo.ccplugin*"/>
+          <artifact groupId="org.nuxeo.ecm.core.event.kafka*"/>
         </excludes>
       </artifact:set>
     </copy>
@@ -127,7 +128,7 @@ todir=&quot;${env.server.home}/sdk&quot; overwrite=&quot;true&quot; /&gt;"/>
                 name="install.templates"
                 value="${line.separator}
 &lt;copy dir=&quot;${package.root}/install/templates&quot; todir=&quot;${env.templates}&quot; overwrite=&quot;true&quot; /&gt;${line.separator}
-&lt;config addtemplate=&quot;nuxeo-core-event-kafka&quot; /&gt;${line.separator}"/>
+&lt;config addtemplate=&quot;kafka&quot; /&gt;${line.separator}"/>
       </then>
     </if>
 
