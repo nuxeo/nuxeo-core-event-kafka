@@ -23,13 +23,14 @@
           </producerConfigs>
 
           <consumerConfigs>
-            <property name="group.id">testGroup</property>
+            <property name="group.id">core-event-group</property>
             <property name="enable.auto.commit">true</property>
             <property name="auto.offset.reset">earliest</property>
             <property name="auto.commit.interval.ms">1000</property>
             <property name="heartbeat.interval.ms">3000</property>
             <property name="session.timeout.ms">10000</property>
             <property name="request.timeout.ms">15000</property>
+            <property name="max.poll.interval.ms">216000000</property>
             <property name="max.partition.fetch.bytes">30720</property>
             <property name="max.poll.records">100</property>
             <property name="key.deserializer">org.apache.kafka.common.serialization.StringDeserializer</property>

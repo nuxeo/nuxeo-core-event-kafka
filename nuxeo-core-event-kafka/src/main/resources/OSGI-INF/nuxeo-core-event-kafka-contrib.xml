@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<component name="test-kafka-pipes">
+<component name="core-event-kafka-pipe">
 
   <require>org.nuxeo.ecm.core.event.EventServiceComponent</require>
 

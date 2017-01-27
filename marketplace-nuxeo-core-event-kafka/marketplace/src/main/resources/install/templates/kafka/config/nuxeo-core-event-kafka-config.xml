@@ -3,7 +3,7 @@
   <extension target="org.nuxeo.ecm.core.event.kafka.service.DefaultKafkaComponent" point="kafkaConfiguration">
     <kafkaConfig bootstrapServer="${nuxeo.kafka.core.event.servers}">
       <topics>
-        <topic>KafkaTopic</topic>
+        <topic>core-event-topic</topic>
       </topics>
       <producerConfigs>
         <property name="acks">all</property>

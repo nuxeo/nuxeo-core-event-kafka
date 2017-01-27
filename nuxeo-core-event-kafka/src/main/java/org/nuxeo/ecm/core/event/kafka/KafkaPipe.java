@@ -122,6 +122,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
                         process(record);
                     }
                 }
+                consumer.close();
             }
         });
 
@@ -131,7 +132,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
     public void shutdown() throws InterruptedException {
         stop = true;
         waitForCompletion(5000L);
-        consumer.close();
+
         consumerTPE.shutdown();
         producer.close();
     }
