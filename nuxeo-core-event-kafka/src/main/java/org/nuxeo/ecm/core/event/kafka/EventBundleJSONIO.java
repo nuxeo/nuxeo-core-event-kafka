@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.codehaus.jackson.JsonFactory;
@@ -36,7 +37,6 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.nuxeo.common.collections.ScopedMap;
 import org.nuxeo.common.utils.Path;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
@@ -198,7 +198,7 @@ public class EventBundleJSONIO {
 
         if (node.has("type") && node.has("path") && node.has("isFolder")) {
             Map<String, Serializable> ctxMap = mapper.convertValue(node, Map.class);
-            ScopedMap smap = new ScopedMap();
+            Map<String, Serializable> smap = new HashMap<>();
             smap.putAll(ctxMap);
 
             JsonNode facetsNode = node.get("facets");
@@ -248,8 +248,8 @@ public class EventBundleJSONIO {
             jg.writeEndArray();
 
             jg.writeObjectFieldStart("context");
-            for (String k : doc.getContextData().keySet()) {
-                jg.writeObjectField(k, doc.getContextData().get(k));
+            for (Entry<String, Serializable> entry : doc.getContextData().entrySet()) {
+                jg.writeObjectField(entry.getKey(), entry.getValue());
             }
             jg.writeEndObject();
 
