@@ -43,7 +43,12 @@
      <appender-ref ref="FILE"/>
   </category>
  -->
-  
+  <category name="org.nuxeo.ecm.core.event.kafka">
+    <priority value="DEBUG"/>
+    <appender-ref ref="CONSOLE" />
+    <appender-ref ref="FILE" />
+  </category>
+
   <root>
     <priority value="WARN" />
     <appender-ref ref="CONSOLE" />

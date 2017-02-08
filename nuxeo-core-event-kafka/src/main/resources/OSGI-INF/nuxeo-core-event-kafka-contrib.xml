@@ -4,7 +4,7 @@
   <require>org.nuxeo.ecm.core.event.EventServiceComponent</require>
 
   <extension target="org.nuxeo.ecm.core.event.EventServiceComponent" point="dispatcher">
-    <eventDispatcher name="dispatcher" class="org.nuxeo.ecm.core.event.pipe.dispatch.SimpleEventBundlePipeDispatcher">
+    <eventDispatcher name="dispatcher" class="org.nuxeo.ecm.core.event.kafka.KafkaEventBundlePipeDispatcher">
     </eventDispatcher>
   </extension>
 
@@ -13,7 +13,32 @@
 
     </eventPipe>
   </extension>
-  
+
+  <extension target="org.nuxeo.ecm.core.event.EventServiceComponent" point="listener">
+    <listener name="kafkaEventListener"
+      enabled="true"
+      postCommit="false"
+      async="false"
+      class="org.nuxeo.ecm.core.event.kafka.CustomEventListener"
+      priority="10"
+      retryCount="1"
+    >
+      <event>CustomEvent</event>
+    </listener>
+  </extension>
+
+  <extension target="org.nuxeo.ecm.core.event.EventServiceComponent" point="listener">
+    <listener name="kafkaPostCommitEventListener"
+              enabled="true"
+              postCommit="true"
+              async="true"
+              class="org.nuxeo.ecm.core.event.kafka.CustomPostCommitEventListener"
+              priority="40"
+              retryCount="1"
+    >
+      <event>CustomEvent</event>
+    </listener>
+  </extension>
 </component>
 
 

@@ -61,24 +61,22 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
     public static final short version = 0;
     private static final short correlationId = -1;
 
-    protected String brokerHost;
-    protected List<String> topics;
+    private List<String> topics;
 
-    protected KafkaProducer<String, String> producer;
+    private KafkaProducer<String, String> producer;
 
-    protected KafkaConsumer<String, String> consumer;
+    private KafkaConsumer<String, String> consumer;
 
-    protected boolean stop = false;
+    private boolean stop = false;
 
-    protected ThreadPoolExecutor consumerTPE;
+    private ThreadPoolExecutor consumerTPE;
 
-    protected EventBundleJSONIO io = new EventBundleJSONIO();
+    private EventBundleJSONIO io = new EventBundleJSONIO();
 
     @Override
     public void initPipe(String name, Map<String, String> params) {
         super.initPipe(name, params);
         DefaultKafkaService service = Framework.getService(DefaultKafkaService.class);
-        brokerHost = service.getHost();
 
         topics = service.allTopics();
 
@@ -87,29 +85,32 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         consumer = new KafkaConsumer<>(service.getConsumerProperties());
         consumer.subscribe(topics);
         try {
-            propagateTopics(10000, service.getHost());
+            propagateTopics(service.getHost());
         } catch (IOException e) {
             log.error(e);
         }
         initConsumerThread();
     }
 
-    protected void initConsumerThread() {
+    private void initConsumerThread() {
 
         AsyncEventExecutor asyncExec = new AsyncEventExecutor();
         consumerTPE = new ThreadPoolExecutor(1, 1, 60, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
         consumerTPE.prestartCoreThread();
         consumerTPE.execute(new Runnable() {
 
-            protected void process(ConsumerRecord<String, String> record) {
+            private void process(ConsumerRecord<String, String> record) {
                 String message = record.value();
 
                 EventBundle bundle = io.unmarshal(message);
-
+                assert bundle != null;
                 // direct exec ?!
                 EventServiceAdmin eventService = Framework.getService(EventServiceAdmin.class);
                 EventListenerList listeners = eventService.getListenerList();
                 List<EventListenerDescriptor> postCommitAsync = listeners.getEnabledAsyncPostCommitListenersDescriptors();
+                assert postCommitAsync != null;
+                assert postCommitAsync.size() > 0;
+                log.debug("About to process event bundle: " + message);
                 asyncExec.run(postCommitAsync, bundle);
             }
 
@@ -119,6 +120,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
                 while (!stop) {
                     ConsumerRecords<String, String> records = consumer.poll(2000);
                     for (ConsumerRecord<String, String> record : records) {
+                        log.info("Getting " + record.value());
                         process(record);
                     }
                 }
@@ -131,7 +133,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
     @Override
     public void shutdown() throws InterruptedException {
         stop = true;
-        waitForCompletion(5000L);
+        waitForCompletion(2000L);
 
         consumerTPE.shutdown();
         producer.close();
@@ -139,7 +141,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
     @Override
     public boolean waitForCompletion(long timeoutMillis) throws InterruptedException {
-        Thread.sleep(2000); // XXX
+        Thread.sleep(timeoutMillis); // XXX
         return true;
     }
 
@@ -150,18 +152,19 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
     @Override
     protected void send(String message) {
+        log.info("Sending " + message);
         int rand = new Random().nextInt(topics.size());
         ProducerRecord<String, String> data = new ProducerRecord<>(topics.get(rand), null, message);
         producer.send(data);
         producer.flush();
     }
 
-    private List<String> propagateTopics(int timeout, String host) throws IOException {
+    private List<String> propagateTopics(String host) throws IOException {
         CreateTopicsRequest.TopicDetails topicDetails = new CreateTopicsRequest.TopicDetails(1, (short)1);
         Map<String, CreateTopicsRequest.TopicDetails> topicConfig = topics.stream()
                 .collect(Collectors.toMap(k -> k, v -> topicDetails));
 
-        CreateTopicsRequest request = new CreateTopicsRequest(topicConfig, timeout);
+        CreateTopicsRequest request = new CreateTopicsRequest(topicConfig, 5000);
 
         List<String> errors = new ArrayList<>();
         try {
@@ -218,5 +221,4 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
         return new byte[0];
     }
-
 }

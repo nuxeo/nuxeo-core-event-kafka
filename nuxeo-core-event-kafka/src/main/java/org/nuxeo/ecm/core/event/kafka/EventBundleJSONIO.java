@@ -16,19 +16,6 @@
  */
 package org.nuxeo.ecm.core.event.kafka;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.security.Principal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonGenerator;
@@ -50,6 +37,19 @@ import org.nuxeo.ecm.core.event.impl.EventContextImpl;
 import org.nuxeo.ecm.core.event.impl.ReconnectedEventBundleImpl;
 import org.nuxeo.ecm.core.event.impl.ShallowDocumentModel;
 import org.nuxeo.ecm.core.event.impl.ShallowEvent;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.security.Principal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * @since 8.4
@@ -194,6 +194,7 @@ public class EventBundleJSONIO {
     }
 
 
+    @SuppressWarnings("unchecked")
     protected Object readObject(JsonNode node, ObjectMapper mapper) throws JsonProcessingException, IOException {
 
         if (node.has("type") && node.has("path") && node.has("isFolder")) {
@@ -202,15 +203,16 @@ public class EventBundleJSONIO {
             smap.putAll(ctxMap);
 
             JsonNode facetsNode = node.get("facets");
-            List<String> lfacets = new ArrayList<String>();
+            List<String> lfacets = new ArrayList<>();
             for (JsonNode facet : facetsNode) {
                 lfacets.add(facet.getTextValue());
             }
 
-            Set<String> facets = new HashSet<String>();
+            Set<String> facets = new HashSet<>();
             facets.addAll(lfacets);
 
-            return new ShallowDocumentModel(node.get("id").getTextValue(),
+            return new ShallowDocumentModel(
+                    node.get("id").getTextValue(),
                     node.get("repoName").getTextValue(),
                     node.get("name").getTextValue(),
                     new Path(node.get("path").getTextValue()),
@@ -218,7 +220,9 @@ public class EventBundleJSONIO {
                     node.get("isFolder").getBooleanValue(),
                     node.get("isVersion").getBooleanValue(),
                     node.get("isProxy").getBooleanValue(),
-                    node.get("isImmutable").getBooleanValue(), smap, facets,
+                    node.get("isImmutable").getBooleanValue(),
+                    smap,
+                    facets,
                     node.get("lifecycleState").getTextValue());
         }
         return mapper.reader().readValue(node);
