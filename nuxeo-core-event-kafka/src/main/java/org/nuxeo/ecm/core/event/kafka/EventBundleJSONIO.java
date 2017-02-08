@@ -16,6 +16,21 @@
  */
 package org.nuxeo.ecm.core.event.kafka;
 
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.security.Principal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonGenerator;
@@ -38,18 +53,6 @@ import org.nuxeo.ecm.core.event.impl.ReconnectedEventBundleImpl;
 import org.nuxeo.ecm.core.event.impl.ShallowDocumentModel;
 import org.nuxeo.ecm.core.event.impl.ShallowEvent;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.security.Principal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * @since 8.4
@@ -199,7 +202,7 @@ public class EventBundleJSONIO {
 
         if (node.has("type") && node.has("path") && node.has("isFolder")) {
             Map<String, Serializable> ctxMap = mapper.convertValue(node, Map.class);
-            ScopedMap smap = new ScopedMap();
+            Map<String, Serializable> smap = new HashMap<>();
             smap.putAll(ctxMap);
 
             JsonNode facetsNode = node.get("facets");
@@ -252,8 +255,8 @@ public class EventBundleJSONIO {
             jg.writeEndArray();
 
             jg.writeObjectFieldStart("context");
-            for (String k : doc.getContextData().keySet()) {
-                jg.writeObjectField(k, doc.getContextData().get(k));
+            for (Entry<String, Serializable> entry : doc.getContextData().entrySet()) {
+                jg.writeObjectField(entry.getKey(), entry.getValue());
             }
             jg.writeEndObject();
 
