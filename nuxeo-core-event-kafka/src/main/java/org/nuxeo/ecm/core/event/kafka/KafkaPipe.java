@@ -70,6 +70,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
     private boolean stop = false;
 
     private ThreadPoolExecutor consumerTPE;
+    private AsyncEventExecutor asyncExec;
 
     private EventBundleJSONIO io = new EventBundleJSONIO();
 
@@ -94,7 +95,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
     private void initConsumerThread() {
 
-        AsyncEventExecutor asyncExec = new AsyncEventExecutor();
+        asyncExec = new AsyncEventExecutor();
         consumerTPE = new ThreadPoolExecutor(1, 1, 60, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
         consumerTPE.prestartCoreThread();
         consumerTPE.execute(new Runnable() {
@@ -103,15 +104,16 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
                 String message = record.value();
 
                 EventBundle bundle = io.unmarshal(message);
-                assert bundle != null;
                 // direct exec ?!
                 EventServiceAdmin eventService = Framework.getService(EventServiceAdmin.class);
                 EventListenerList listeners = eventService.getListenerList();
                 List<EventListenerDescriptor> postCommitAsync = listeners.getEnabledAsyncPostCommitListenersDescriptors();
-                assert postCommitAsync != null;
-                assert postCommitAsync.size() > 0;
                 log.debug("About to process event bundle: " + message);
-                asyncExec.run(postCommitAsync, bundle);
+                try {
+                    asyncExec.run(postCommitAsync, bundle);
+                } catch (Exception e) {
+                    log.error(e);
+                }
             }
 
             @Override
@@ -136,12 +138,14 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         waitForCompletion(2000L);
 
         consumerTPE.shutdown();
+        asyncExec.shutdown(2000L);
         producer.close();
     }
 
     @Override
     public boolean waitForCompletion(long timeoutMillis) throws InterruptedException {
-        Thread.sleep(timeoutMillis); // XXX
+        asyncExec.waitForCompletion(timeoutMillis);
+        consumerTPE.awaitTermination(timeoutMillis, TimeUnit.MILLISECONDS);
         return true;
     }
 

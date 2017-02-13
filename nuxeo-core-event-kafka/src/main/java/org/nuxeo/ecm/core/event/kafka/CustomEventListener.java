@@ -31,9 +31,9 @@ public class CustomEventListener implements EventListener {
     public void handleEvent(Event event) {
         switch (event.getName()) {
             case "CustomEvent":
-                log.info("Synchronous event received: " + event);
+                log.info("Synchronous event received: " + event.getName());
             default:
-                log.info("Unknown event: " + event);
+                log.info("Unknown event: " + event.getName());
         }
     }
 }

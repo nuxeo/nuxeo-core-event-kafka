@@ -24,14 +24,18 @@ import org.nuxeo.ecm.core.event.Event;
 import org.nuxeo.ecm.core.event.EventBundle;
 import org.nuxeo.ecm.core.event.PostCommitEventListener;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class CustomPostCommitEventListener implements PostCommitEventListener {
 
     private Log log = LogFactory.getLog(CustomPostCommitEventListener.class);
+    public static AtomicInteger counter = new AtomicInteger();
 
     @Override
     public void handleEvent(EventBundle eventBundle) {
         for (Event event : eventBundle) {
-            log.debug("Post commit listener received event: " + event);
+            log.debug("Post commit listener received event: " + event.getName());
+            counter.incrementAndGet();
         }
     }
 }

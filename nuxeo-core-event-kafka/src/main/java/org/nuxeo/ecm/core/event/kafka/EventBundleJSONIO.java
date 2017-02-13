@@ -17,6 +17,25 @@
 package org.nuxeo.ecm.core.event.kafka;
 
 
+import org.codehaus.jackson.JsonFactory;
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.JsonParser;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.nuxeo.common.utils.Path;
+import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.api.SimplePrincipal;
+import org.nuxeo.ecm.core.event.Event;
+import org.nuxeo.ecm.core.event.EventBundle;
+import org.nuxeo.ecm.core.event.EventContext;
+import org.nuxeo.ecm.core.event.impl.DocumentEventContext;
+import org.nuxeo.ecm.core.event.impl.EventBundleImpl;
+import org.nuxeo.ecm.core.event.impl.EventContextImpl;
+import org.nuxeo.ecm.core.event.impl.ReconnectedEventBundleImpl;
+import org.nuxeo.ecm.core.event.impl.ShallowDocumentModel;
+import org.nuxeo.ecm.core.event.impl.ShallowEvent;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.io.StringReader;
@@ -30,28 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.nuxeo.common.collections.ScopedMap;
-import org.nuxeo.common.utils.Path;
-import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.api.SimplePrincipal;
-import org.nuxeo.ecm.core.event.Event;
-import org.nuxeo.ecm.core.event.EventBundle;
-import org.nuxeo.ecm.core.event.EventContext;
-import org.nuxeo.ecm.core.event.impl.DocumentEventContext;
-import org.nuxeo.ecm.core.event.impl.EventBundleImpl;
-import org.nuxeo.ecm.core.event.impl.EventContextImpl;
-import org.nuxeo.ecm.core.event.impl.ReconnectedEventBundleImpl;
-import org.nuxeo.ecm.core.event.impl.ShallowDocumentModel;
-import org.nuxeo.ecm.core.event.impl.ShallowEvent;
 
 
 /**
@@ -80,8 +77,7 @@ public class EventBundleJSONIO {
             }
             jg.writeEndArray();
             jg.flush();
-            String json = writer.toString();
-            return json;
+            return writer.toString();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -102,13 +98,12 @@ public class EventBundleJSONIO {
             }
 
             return new ReconnectedEventBundleImpl(bundle);
-
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    protected Event readEvent(JsonNode eventNode) throws JsonProcessingException, IOException {
+    protected Event readEvent(JsonNode eventNode) throws IOException {
         String eventName = eventNode.get("eventName").getValueAsText();
         long dateTime = eventNode.get("dateTime").getLongValue();
         int flags = eventNode.get("flags").getIntValue();
@@ -118,7 +113,7 @@ public class EventBundleJSONIO {
         return new ShallowEvent(eventName, ctx, flags, dateTime);
     }
 
-    protected void writeEvent(JsonGenerator jg, Event event) throws JsonGenerationException, IOException {
+    protected void writeEvent(JsonGenerator jg, Event event) throws IOException {
 
         if (!(event instanceof ShallowEvent)) {
             event = ShallowEvent.create(event);
@@ -137,7 +132,7 @@ public class EventBundleJSONIO {
 
     }
 
-    protected void writeEventContext(JsonGenerator jg, EventContext ctx) throws JsonGenerationException, IOException  {
+    protected void writeEventContext(JsonGenerator jg, EventContext ctx) throws IOException  {
         jg.writeObjectFieldStart("context");
         jg.writeStringField("type", ctx.getClass().getName());
 
@@ -161,7 +156,7 @@ public class EventBundleJSONIO {
 
     }
 
-    protected EventContext readEventContext (JsonNode ctxNode) throws JsonProcessingException, IOException {
+    protected EventContext readEventContext (JsonNode ctxNode) throws IOException {
 
         ObjectMapper mapper = new ObjectMapper();
 
@@ -176,15 +171,15 @@ public class EventBundleJSONIO {
             args.add(readObject(arg, mapper));
         }
 
-        EventContext ctx=null;
+        EventContext ctx;
         if (type.equals("org.nuxeo.ecm.core.event.impl.DocumentEventContext")) {
-            ctx = new DocumentEventContext((CoreSession) null, principal, (DocumentModel) args.get(0));
+            ctx = new DocumentEventContext( null, principal, (DocumentModel) args.get(0));
         } else {
             ctx = new EventContextImpl(args);
         }
         ctx.setRepositoryName(repository);
 
-        Map<String, Serializable> props = new HashMap<String, Serializable>();
+        Map<String, Serializable> props = new HashMap<>();
         JsonNode propsNode = ctxNode.get("props");
         Iterator<String> propsNameIT = propsNode.getFieldNames();
         while (propsNameIT.hasNext()) {
@@ -232,7 +227,7 @@ public class EventBundleJSONIO {
     }
 
 
-    protected void writeObject(JsonGenerator jg, Object object) throws JsonGenerationException, IOException {
+    protected void writeObject(JsonGenerator jg, Object object) throws IOException {
         if (object instanceof ShallowDocumentModel) {
             ShallowDocumentModel doc = (ShallowDocumentModel) object;
             jg.writeStartObject();
