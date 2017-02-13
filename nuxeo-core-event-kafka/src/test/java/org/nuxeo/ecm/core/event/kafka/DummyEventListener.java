@@ -16,6 +16,8 @@
  */
 package org.nuxeo.ecm.core.event.kafka;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.nuxeo.ecm.core.event.Event;
 import org.nuxeo.ecm.core.event.EventBundle;
 import org.nuxeo.ecm.core.event.PostCommitEventListener;
@@ -29,6 +31,8 @@ import java.util.List;
  */
 public class DummyEventListener implements PostCommitEventListener {
 
+    private Log log = LogFactory.getLog(DummyEventListener.class);
+
     public static List<Event> events = new ArrayList<>();
 
     public static void init() {
@@ -40,6 +44,11 @@ public class DummyEventListener implements PostCommitEventListener {
         for (Event event : bundle) {
             events.add(event);
         }
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            log.error(e);
+            Thread.currentThread().interrupt();
+        }
     }
-
 }

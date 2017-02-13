@@ -18,7 +18,6 @@ package org.nuxeo.ecm.core.event.kafka.listeners;
 
 import com.google.inject.Inject;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.nuxeo.ecm.core.api.CoreSession;
@@ -55,8 +54,6 @@ public class TestCoreEventsWithKafka {
     @Inject
     private EventService eventService;
 
-
-    @Ignore
     @Test
     public void testCoreEventsMarshalling() throws Exception {
 

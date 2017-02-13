@@ -23,33 +23,24 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.protocol.ApiKeys;
-import org.apache.kafka.common.requests.CreateTopicsRequest;
-import org.apache.kafka.common.requests.CreateTopicsResponse;
-import org.apache.kafka.common.requests.RequestHeader;
-import org.apache.kafka.common.requests.ResponseHeader;
 import org.nuxeo.ecm.core.event.EventBundle;
 import org.nuxeo.ecm.core.event.EventServiceAdmin;
 import org.nuxeo.ecm.core.event.impl.AsyncEventExecutor;
 import org.nuxeo.ecm.core.event.impl.EventListenerDescriptor;
 import org.nuxeo.ecm.core.event.impl.EventListenerList;
+import org.nuxeo.ecm.core.event.kafka.helper.KafkaConfigHandler;
 import org.nuxeo.ecm.core.event.kafka.service.DefaultKafkaService;
 import org.nuxeo.ecm.core.event.pipe.AbstractEventBundlePipe;
+import org.nuxeo.ecm.core.work.api.WorkManager;
 import org.nuxeo.runtime.api.Framework;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * @since 8.4
@@ -57,17 +48,14 @@ import java.util.stream.Collectors;
 public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
     private static final Log log = LogFactory.getLog(KafkaPipe.class);
-    private static final short apiKey = ApiKeys.CREATE_TOPICS.id;
-    public static final short version = 0;
-    private static final short correlationId = -1;
-
+    private static final int MAX_WORKERS = 5;
     private List<String> topics;
 
     private KafkaProducer<String, String> producer;
 
     private KafkaConsumer<String, String> consumer;
 
-    private boolean stop = false;
+    private volatile boolean canStop = false;
 
     private ThreadPoolExecutor consumerTPE;
     private AsyncEventExecutor asyncExec;
@@ -86,7 +74,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         consumer = new KafkaConsumer<>(service.getConsumerProperties());
         consumer.subscribe(topics);
         try {
-            propagateTopics(service.getHost());
+            KafkaConfigHandler.propagateTopics(service.getHost(), topics);
         } catch (IOException e) {
             log.error(e);
         }
@@ -94,58 +82,25 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
     }
 
     private void initConsumerThread() {
-
         asyncExec = new AsyncEventExecutor();
         consumerTPE = new ThreadPoolExecutor(1, 1, 60, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
         consumerTPE.prestartCoreThread();
-        consumerTPE.execute(new Runnable() {
-
-            private void process(ConsumerRecord<String, String> record) {
-                String message = record.value();
-
-                EventBundle bundle = io.unmarshal(message);
-                // direct exec ?!
-                EventServiceAdmin eventService = Framework.getService(EventServiceAdmin.class);
-                EventListenerList listeners = eventService.getListenerList();
-                List<EventListenerDescriptor> postCommitAsync = listeners.getEnabledAsyncPostCommitListenersDescriptors();
-                log.debug("About to process event bundle: " + message);
-                try {
-                    asyncExec.run(postCommitAsync, bundle);
-                } catch (Exception e) {
-                    log.error(e);
-                }
-            }
-
-            @Override
-            public void run() {
-
-                while (!stop) {
-                    ConsumerRecords<String, String> records = consumer.poll(2000);
-                    for (ConsumerRecord<String, String> record : records) {
-                        log.info("Getting " + record.value());
-                        process(record);
-                    }
-                }
-                consumer.close();
-            }
-        });
-
+        consumerTPE.execute(new ConsumerExecutor());
     }
 
     @Override
     public void shutdown() throws InterruptedException {
-        stop = true;
-        waitForCompletion(2000L);
-
         consumerTPE.shutdown();
         asyncExec.shutdown(2000L);
+        waitForCompletion(2000L);
         producer.close();
     }
 
     @Override
     public boolean waitForCompletion(long timeoutMillis) throws InterruptedException {
+        canStop = true;
+        consumerTPE.awaitTermination(5, TimeUnit.SECONDS);
         asyncExec.waitForCompletion(timeoutMillis);
-        consumerTPE.awaitTermination(timeoutMillis, TimeUnit.MILLISECONDS);
         return true;
     }
 
@@ -163,66 +118,47 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         producer.flush();
     }
 
-    private List<String> propagateTopics(String host) throws IOException {
-        CreateTopicsRequest.TopicDetails topicDetails = new CreateTopicsRequest.TopicDetails(1, (short)1);
-        Map<String, CreateTopicsRequest.TopicDetails> topicConfig = topics.stream()
-                .collect(Collectors.toMap(k -> k, v -> topicDetails));
 
-        CreateTopicsRequest request = new CreateTopicsRequest(topicConfig, 5000);
+    public class ConsumerExecutor implements Runnable {
 
-        List<String> errors = new ArrayList<>();
-        try {
-            CreateTopicsResponse response = createTopic(request, host);
-            return response.errors().entrySet().stream()
-//                    .filter(error -> error.getValue() == Errors.NONE)
-                    .map(Map.Entry::getKey)
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            log.error(e);
+        private void process(ConsumerRecord<String, String> record) {
+            String message = record.value();
+
+            EventBundle bundle = io.unmarshal(message);
+            EventServiceAdmin eventService = Framework.getService(EventServiceAdmin.class);
+            EventListenerList listeners = eventService.getListenerList();
+            List<EventListenerDescriptor> postCommitAsync = listeners.getEnabledAsyncPostCommitListenersDescriptors();
+            log.debug("About to process event bundle: " + message);
+            try {
+                asyncExec.run(postCommitAsync, bundle);
+            } catch (Exception e) {
+                log.error(e);
+            }
         }
 
-        return errors;
-    }
+        @Override
+        public void run() {
+            final WorkManager workManager = Framework.getService(WorkManager.class);
+            boolean isEmpty = false;
+            while (!canStop && !isEmpty) {
+                if (workManager.getMetrics("default").getRunning().intValue() > MAX_WORKERS) {
+                    try {
+                        Thread.sleep(200);
+                        continue;
+                    } catch (InterruptedException e) {
+                        log.error("Consumer thread interrupted", e);
+                        Thread.currentThread().interrupt();
+                    }
+                }
 
-    private static CreateTopicsResponse createTopic(CreateTopicsRequest request, String client) throws IllegalArgumentException, IOException {
-        String[] comp = client.split(":");
-        if (comp.length != 2) {
-            throw new IllegalArgumentException("Wrong client directive");
+                ConsumerRecords<String, String> records = consumer.poll(2000);
+                isEmpty = canStop && records.isEmpty();
+                for (ConsumerRecord<String, String> record : records) {
+                    log.debug("Getting " + record.value());
+                    process(record);
+                }
+            }
+            consumer.close();
         }
-        String address = comp[0];
-        int port = Integer.parseInt(comp[1]);
-
-        RequestHeader header = new RequestHeader(apiKey, version, client, correlationId);
-        ByteBuffer buffer = ByteBuffer.allocate(header.sizeOf() + request.sizeOf());
-        header.writeTo(buffer);
-        request.writeTo(buffer);
-
-        byte byteBuf[] = buffer.array();
-
-        byte[] resp = requestAndReceive(byteBuf, address, port);
-        ByteBuffer respBuffer = ByteBuffer.wrap(resp);
-        ResponseHeader.parse(respBuffer);
-
-        return CreateTopicsResponse.parse(respBuffer);
-    }
-
-    private static byte[] requestAndReceive(byte[] buffer, String address, int port) throws IOException {
-        try(Socket socket = new Socket(address, port);
-            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            DataInputStream dis = new DataInputStream(socket.getInputStream())
-        ) {
-            dos.writeInt(buffer.length);
-            dos.write(buffer);
-            dos.flush();
-
-            byte resp[] = new byte[dis.readInt()];
-            dis.readFully(resp);
-
-            return resp;
-        } catch (IOException e) {
-            log.error(e);
-        }
-
-        return new byte[0];
     }
 }

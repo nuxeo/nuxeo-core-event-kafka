@@ -1,19 +1,23 @@
 /*
- * (C) Copyright 2016 Nuxeo SA (http://nuxeo.com/) and contributors.
+ * (C) Copyright 2006-2017 Nuxeo (http://nuxeo.com/) and others.
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Lesser General Public License
- * (LGPL) version 2.1 which accompanies this distribution, and is available at
- * http://www.gnu.org/licenses/lgpl-2.1.html
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  *
  * Contributors:
- *     tiry
+ *     anechaev
  */
+
 package org.nuxeo.ecm.core.event.kafka;
 
 import com.google.inject.Inject;
@@ -31,6 +35,8 @@ import org.nuxeo.ecm.core.event.pipe.dispatch.EventBundleDispatcher;
 import org.nuxeo.ecm.core.test.CoreFeature;
 import org.nuxeo.ecm.core.test.annotations.Granularity;
 import org.nuxeo.ecm.core.test.annotations.RepositoryConfig;
+import org.nuxeo.ecm.core.work.api.WorkManager;
+import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
 import org.nuxeo.runtime.test.runner.LocalDeploy;
@@ -39,10 +45,7 @@ import java.security.Principal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-
-/**
- * @since TODO
- */
+import static org.junit.Assert.assertTrue;
 
 @RunWith(FeaturesRunner.class)
 @Features({ KafkaEventBusFeature.class, CoreFeature.class })
@@ -51,7 +54,10 @@ import static org.junit.Assert.assertNotNull;
         "org.nuxeo.ecm.core.event.kafka.test:test-kafka-service-contrib.xml",
         "org.nuxeo.ecm.core.event.kafka.test:test-async-listeners.xml"
 })
-public class TestKafkaPipe {
+public class TestKafkaPipeKeepingLimitedWorkers {
+
+    private static final int MAX_WORKERS = 5;
+    private static final int MAX_EVENTS = 1000;
 
     private Principal principal = new SimplePrincipal("kafkaEventPrincipal");
 
@@ -61,10 +67,10 @@ public class TestKafkaPipe {
     @Inject
     private CoreSession mSession;
 
-
     @Before
     public void setup() {
         DummyEventListener.events.clear();
+        assertNotNull(principal);
     }
 
     @After
@@ -73,24 +79,33 @@ public class TestKafkaPipe {
     }
 
     @Test
-    public void shouldSendEventViaKafka() throws Exception {
-
+    public void shouldKeepWorkersLowerThanMax() throws InterruptedException {
         EventBundleDispatcher dispatcher = ((EventServiceImpl) eventService).getEventBundleDispatcher();
         // check that kafka pipe is indeed deployed !
         assertNotNull(dispatcher);
 
         DummyEventListener.init();
 
-        assertNotNull(principal);
         UnboundEventContext ctx = new UnboundEventContext(principal, null);
         ctx.setRepositoryName(mSession.getRepositoryName());
         ctx.setCoreSession(mSession);
         ctx.setProperty("sessionId", mSession.getSessionId());
         assertNotNull(ctx.getCoreSession());
-        eventService.fireEvent(ctx.newEvent("Test1"));
-        eventService.fireEvent(ctx.newEvent("Test2"));
+
+        int counter = 0;
+        for (; counter < MAX_EVENTS; counter++) {
+            eventService.fireEvent(ctx.newEvent("Test1"));
+        }
+
+        Thread.sleep(300);
+
+        WorkManager manager = Framework.getService(WorkManager.class);
+        int activeWorkers = manager.getMetrics("default").getRunning().intValue();
+        assertTrue("Running workers should be more than 0", activeWorkers > 0);
+        assertTrue("Active workers should be less than the default amount", activeWorkers <= MAX_WORKERS);
+
         eventService.waitForAsyncCompletion();
 
-        assertEquals(2, DummyEventListener.events.size());
+        assertEquals(counter, manager.getMetrics("default").getCompleted().intValue());
     }
 }

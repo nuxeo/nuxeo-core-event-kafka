@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <component name="test-async-listener">
 
+  <require>core-event-kafka-pipe</require>
   <extension target="org.nuxeo.ecm.core.event.EventServiceComponent" point="listener">
-    <listener async="true" postCommit="false" class="org.nuxeo.ecm.core.event.kafka.DummyEventListener" name="testPostCommit">
+    <listener async="true" postCommit="false" class="org.nuxeo.ecm.core.event.kafka.DummyEventListener" name="kafkaPostCommitEventListener">
       <event>documentModified</event>
       <event>documentCreated</event>
     </listener>
