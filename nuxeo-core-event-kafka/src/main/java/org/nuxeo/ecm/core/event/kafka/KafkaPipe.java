@@ -125,7 +125,9 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
     public class ConsumerExecutor implements Runnable {
 
-        private void process(ConsumerRecord<String, String> record) {
+        private final int IDLE_TIMEOUT_MS = 200;
+
+        private void process(ConsumerRecord<String, String> record) throws Exception {
             String message = record.value();
 
             EventBundle bundle = io.unmarshal(message);
@@ -133,21 +135,16 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
             EventListenerList listeners = eventService.getListenerList();
             List<EventListenerDescriptor> postCommitAsync = listeners.getEnabledAsyncPostCommitListenersDescriptors();
             log.debug("About to process event bundle: " + message);
-            try {
-                asyncExec.run(postCommitAsync, bundle);
-            } catch (Exception e) {
-                log.error(e);
-            }
+            asyncExec.run(postCommitAsync, bundle);
         }
 
         @Override
         public void run() {
             final WorkManager workManager = Framework.getService(WorkManager.class);
-            boolean isEmpty = false;
-            while (!canStop && !isEmpty) {
+            while (!canStop) {
                 if (workManager.getMetrics("default").getRunning().intValue() > MAX_WORKERS) {
                     try {
-                        Thread.sleep(200);
+                        Thread.sleep(IDLE_TIMEOUT_MS);
                         continue;
                     } catch (InterruptedException e) {
                         log.error("Consumer thread interrupted", e);
@@ -157,11 +154,15 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
                 }
 
                 ConsumerRecords<String, String> records = consumer.poll(2000);
-                isEmpty = canStop && records.isEmpty();
                 for (ConsumerRecord<String, String> record : records) {
                     log.debug("Getting " + record.value());
-                    process(record);
+                    try {
+                        process(record);
+                    } catch (Exception e) {
+                        log.error(e);
+                    }
                 }
+                consumer.commitSync();
             }
             consumer.close();
         }
