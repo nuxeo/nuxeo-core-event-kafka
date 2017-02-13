@@ -115,9 +115,13 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         int rand = new Random().nextInt(topics.size());
         ProducerRecord<String, String> data = new ProducerRecord<>(topics.get(rand), null, message);
         producer.send(data);
-        producer.flush();
     }
 
+    @Override
+    public void sendEventBundle(EventBundle events) {
+        super.sendEventBundle(events);
+        producer.flush();
+    }
 
     public class ConsumerExecutor implements Runnable {
 
@@ -147,6 +151,7 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
                         continue;
                     } catch (InterruptedException e) {
                         log.error("Consumer thread interrupted", e);
+                        consumer.close();
                         Thread.currentThread().interrupt();
                     }
                 }
