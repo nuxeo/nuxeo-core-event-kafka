@@ -3,7 +3,7 @@
   <extension target="org.nuxeo.ecm.core.event.kafka.service.DefaultKafkaComponent" point="kafkaConfiguration">
     <kafkaConfig bootstrapServer="${nuxeo.kafka.core.event.servers}">
       <topics>
-        <topic>core-event-topic</topic>
+        <topic>nuxeo-core-event-topic</topic>
       </topics>
       <producerConfigs>
         <property name="acks">all</property>
@@ -24,8 +24,9 @@
         <property name="heartbeat.interval.ms">3000</property>
         <property name="session.timeout.ms">10000</property>
         <property name="request.timeout.ms">15000</property>
+        <property name="max.poll.interval.ms">216000000</property>
         <property name="max.partition.fetch.bytes">30720</property>
-        <property name="max.poll.records">100</property>
+        <property name="max.poll.records">25</property>
         <property name="key.deserializer">org.apache.kafka.common.serialization.StringDeserializer</property>
         <property name="value.deserializer">${nuxeo.kafka.core.event.deserializer}</property>
       </consumerConfigs>

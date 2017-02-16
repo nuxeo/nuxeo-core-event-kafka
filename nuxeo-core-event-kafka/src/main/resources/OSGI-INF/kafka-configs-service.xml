@@ -9,7 +9,7 @@
         <kafkaConfig
                 bootstrapServer="127.0.0.1:9092">
           <topics>
-            <topic>test</topic>
+            <topic>nuxeo-event-system-topic</topic>
           </topics>
           <producerConfigs>
             <property name="acks">all</property>

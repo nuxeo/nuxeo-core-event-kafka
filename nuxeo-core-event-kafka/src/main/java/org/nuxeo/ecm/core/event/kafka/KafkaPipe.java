@@ -48,14 +48,14 @@ import java.util.concurrent.TimeUnit;
 public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
     private static final Log log = LogFactory.getLog(KafkaPipe.class);
-    private static final int MAX_WORKERS = 5;
-    private List<String> topics;
-
-    private KafkaProducer<String, String> producer;
-
-    private KafkaConsumer<String, String> consumer;
+    private static final int MAX_WORKERS = 100;
+    private static final long AWAIT_TIME_MS = 2000L;
 
     private volatile boolean canStop = false;
+
+    private List<String> topics;
+    private KafkaProducer<String, String> producer;
+    private KafkaConsumer<String, String> consumer;
 
     private ThreadPoolExecutor consumerTPE;
     private AsyncEventExecutor asyncExec;
@@ -76,32 +76,9 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         try {
             KafkaConfigHandler.propagateTopics(service.getHost(), topics);
         } catch (IOException e) {
-            log.error(e);
+            log.error("Couldn't propagate topics", e);
         }
         initConsumerThread();
-    }
-
-    private void initConsumerThread() {
-        asyncExec = new AsyncEventExecutor();
-        consumerTPE = new ThreadPoolExecutor(1, 1, 60, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
-        consumerTPE.prestartCoreThread();
-        consumerTPE.execute(new ConsumerExecutor());
-    }
-
-    @Override
-    public void shutdown() throws InterruptedException {
-        consumerTPE.shutdown();
-        asyncExec.shutdown(2000L);
-        waitForCompletion(2000L);
-        producer.close();
-    }
-
-    @Override
-    public boolean waitForCompletion(long timeoutMillis) throws InterruptedException {
-        canStop = true;
-        consumerTPE.awaitTermination(5, TimeUnit.SECONDS);
-        asyncExec.waitForCompletion(timeoutMillis);
-        return true;
     }
 
     @Override
@@ -123,6 +100,29 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
         producer.flush();
     }
 
+    @Override
+    public void shutdown() throws InterruptedException {
+        consumerTPE.shutdown();
+        asyncExec.shutdown(AWAIT_TIME_MS);
+        waitForCompletion(AWAIT_TIME_MS);
+        producer.close();
+    }
+
+    @Override
+    public boolean waitForCompletion(long timeoutMillis) throws InterruptedException {
+        canStop = true;
+        consumerTPE.awaitTermination(5, TimeUnit.SECONDS);
+        asyncExec.waitForCompletion(timeoutMillis);
+        return true;
+    }
+
+    private void initConsumerThread() {
+        asyncExec = new AsyncEventExecutor();
+        consumerTPE = new ThreadPoolExecutor(1, 1, 60, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
+        consumerTPE.prestartCoreThread();
+        consumerTPE.execute(new ConsumerExecutor());
+    }
+
     public class ConsumerExecutor implements Runnable {
 
         private final int IDLE_TIMEOUT_MS = 200;
@@ -140,6 +140,10 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
 
         @Override
         public void run() {
+            log.debug("ConsumerExecutor started");
+            long processed = 0;
+            long exceptions = 0;
+
             final WorkManager workManager = Framework.getService(WorkManager.class);
             while (!canStop) {
                 if (workManager.getMetrics("default").getRunning().intValue() > MAX_WORKERS) {
@@ -153,18 +157,23 @@ public class KafkaPipe extends AbstractEventBundlePipe<String> {
                     }
                 }
 
-                ConsumerRecords<String, String> records = consumer.poll(2000);
+                ConsumerRecords<String, String> records = consumer.poll(AWAIT_TIME_MS);
                 for (ConsumerRecord<String, String> record : records) {
                     log.debug("Getting " + record.value());
                     try {
                         process(record);
+                        processed++;
                     } catch (Exception e) {
-                        log.error(e);
+                        log.error("Couldn't process the event " + record.value(), e);
+                        exceptions++;
                     }
                 }
                 consumer.commitSync();
             }
             consumer.close();
+
+            String formatted = String.format("ConsumerExecutor finished its job. Processed %d events. %d threw exceptions", processed, exceptions);
+            log.debug(formatted);
         }
     }
 }

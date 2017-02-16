@@ -19,14 +19,11 @@
               enabled="true"
               postCommit="true"
               async="true"
-              class="org.nuxeo.ecm.core.event.kafka.CustomPostCommitEventListener"
+              class="org.nuxeo.ecm.core.event.kafka.listeners.CustomPostCommitEventListener"
               priority="40"
               retryCount="1">
 
       <event>CustomEvent</event>
-
     </listener>
   </extension>
 </component>
-
-

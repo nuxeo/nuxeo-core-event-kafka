@@ -1,4 +1,4 @@
-package org.nuxeo.ecm.core.event.kafka;/*
+package org.nuxeo.ecm.core.event.kafka.listeners;/*
  * (C) Copyright 2006-2017 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
