@@ -17,12 +17,6 @@
 package org.nuxeo.ecm.core.event.kafka;
 
 
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.nuxeo.common.utils.Path;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.SimplePrincipal;
@@ -35,6 +29,13 @@ import org.nuxeo.ecm.core.event.impl.EventContextImpl;
 import org.nuxeo.ecm.core.event.impl.ReconnectedEventBundleImpl;
 import org.nuxeo.ecm.core.event.impl.ShallowDocumentModel;
 import org.nuxeo.ecm.core.event.impl.ShallowEvent;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -90,7 +91,7 @@ public class EventBundleJSONIO {
 
             JsonNode jn = jp.readValueAsTree();
 
-            Iterator<JsonNode> it = jn.getElements();
+            Iterator<JsonNode> it = jn.elements();
 
             EventBundleImpl bundle = new EventBundleImpl();
             while (it.hasNext()) {
@@ -104,9 +105,9 @@ public class EventBundleJSONIO {
     }
 
     protected Event readEvent(JsonNode eventNode) throws IOException {
-        String eventName = eventNode.get("eventName").getValueAsText();
-        long dateTime = eventNode.get("dateTime").getLongValue();
-        int flags = eventNode.get("flags").getIntValue();
+        String eventName = eventNode.get("eventName").asText();
+        long dateTime = eventNode.get("dateTime").longValue();
+        int flags = eventNode.get("flags").intValue();
 
         EventContext ctx=readEventContext(eventNode.get("context"));
 
@@ -160,9 +161,9 @@ public class EventBundleJSONIO {
 
         ObjectMapper mapper = new ObjectMapper();
 
-        Principal principal = new SimplePrincipal(ctxNode.get("principal").getValueAsText());
-        String repository = ctxNode.get("repository").getTextValue();
-        String type = ctxNode.get("type").getValueAsText();
+        Principal principal = new SimplePrincipal(ctxNode.get("principal").asText());
+        String repository = ctxNode.get("repository").textValue();
+        String type = ctxNode.get("type").asText();
 
 
         JsonNode argsNode = ctxNode.get("args");
@@ -181,10 +182,10 @@ public class EventBundleJSONIO {
 
         Map<String, Serializable> props = new HashMap<>();
         JsonNode propsNode = ctxNode.get("props");
-        Iterator<String> propsNameIT = propsNode.getFieldNames();
+        Iterator<String> propsNameIT = propsNode.fieldNames();
         while (propsNameIT.hasNext()) {
             String key = propsNameIT.next();
-            String value = propsNode.get(key).getValueAsText();
+            String value = propsNode.get(key).asText();
             props.put(key, value);
         }
         ctx.setProperties(props);
@@ -203,25 +204,25 @@ public class EventBundleJSONIO {
             JsonNode facetsNode = node.get("facets");
             List<String> lfacets = new ArrayList<>();
             for (JsonNode facet : facetsNode) {
-                lfacets.add(facet.getTextValue());
+                lfacets.add(facet.textValue());
             }
 
             Set<String> facets = new HashSet<>();
             facets.addAll(lfacets);
 
             return new ShallowDocumentModel(
-                    node.get("id").getTextValue(),
-                    node.get("repoName").getTextValue(),
-                    node.get("name").getTextValue(),
-                    new Path(node.get("path").getTextValue()),
-                    node.get("type").getTextValue(),
-                    node.get("isFolder").getBooleanValue(),
-                    node.get("isVersion").getBooleanValue(),
-                    node.get("isProxy").getBooleanValue(),
-                    node.get("isImmutable").getBooleanValue(),
+                    node.get("id").textValue(),
+                    node.get("repoName").textValue(),
+                    node.get("name").textValue(),
+                    new Path(node.get("path").textValue()),
+                    node.get("type").textValue(),
+                    node.get("isFolder").booleanValue(),
+                    node.get("isVersion").booleanValue(),
+                    node.get("isProxy").booleanValue(),
+                    node.get("isImmutable").booleanValue(),
                     smap,
                     facets,
-                    node.get("lifecycleState").getTextValue());
+                    node.get("lifecycleState").textValue());
         }
         return mapper.reader().readValue(node);
     }
